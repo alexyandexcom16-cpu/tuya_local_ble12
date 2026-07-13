@@ -1172,7 +1172,7 @@ class TuyaBLEDevice:
 
             # Command-style status used in some captures:
             #   01 <dp_id> <len:3> <value:len>
-            if op == 1 and 1 <= data_len <= len(data) - value_pos:
+            if op == 1 and dp_id in (9, 31, 48) and 1 <= data_len <= len(data) - value_pos:
                 raw_value = data[value_pos:next_pos]
                 value = int.from_bytes(raw_value, "big", signed=False)
                 _LOGGER.debug(
@@ -1201,7 +1201,7 @@ class TuyaBLEDevice:
                 data_len = int.from_bytes(data[pos + 4:pos + 7], "big")
                 value_pos = pos + 7
                 next_pos = value_pos + data_len
-                if 1 <= data_len <= len(data) - value_pos:
+                if dp_id in (9, 31, 48) and 1 <= data_len <= len(data) - value_pos:
                     raw_value = data[value_pos:next_pos]
                     value = int.from_bytes(raw_value, "big", signed=False)
                     _LOGGER.debug(
@@ -1230,14 +1230,9 @@ class TuyaBLEDevice:
                     data_len = int.from_bytes(data[pos + 5:pos + 7], "big")
                     value_pos = pos + 7
                     next_pos = value_pos + data_len
-                    if dp_type in (0, 1, 4) and 1 <= data_len <= len(data) - value_pos:
+                    if dp_id in (9, 31, 48) and dp_type in (0, 4) and 1 <= data_len <= len(data) - value_pos:
                         raw_value = data[value_pos:next_pos]
-                        if dp_type == 1:
-                            value = raw_value[0] != 0
-                            value_type = TuyaBLEDataPointType.DT_BOOL
-                        else:
-                            value = int.from_bytes(raw_value, "big", signed=False)
-                            value_type = TuyaBLEDataPointType.DT_ENUM
+                        value = int.from_bytes(raw_value, "big", signed=False)
                         _LOGGER.debug(
                             "%s: Received Raykube V4 typed event datapoint update, id: %s, type: %s: value: %s",
                             self.address,
@@ -1249,7 +1244,7 @@ class TuyaBLEDevice:
                             dp_id,
                             time.time(),
                             0,
-                            value_type,
+                            TuyaBLEDataPointType.DT_ENUM,
                             value,
                         )
                         datapoints.append(self._datapoints[dp_id])
@@ -1260,8 +1255,8 @@ class TuyaBLEDevice:
             pos += 1
 
         if not datapoints:
-            _LOGGER.warning(
-                "%s: UNKNOWN RAYKUBE EVENT: %s",
+            _LOGGER.debug(
+                "%s: Ignoring unsupported Raykube V4 payload: %s",
                 self.address,
                 data.hex(),
             )
